@@ -2,7 +2,7 @@ import 'package:riverpod/riverpod.dart';
 import 'package:todos/todo_data.dart';
 import 'package:uuid/uuid.dart';
 
-const _uuid = Uuid();
+final uuidProvider = Provider((_) => Uuid());
 
 /// An object that controls a list of [Todo].
 class TodoList extends Notifier<List<Todo>> {
@@ -17,7 +17,7 @@ class TodoList extends Notifier<List<Todo>> {
     state = [
       ...state,
       Todo(
-        id: _uuid.v4(),
+        id: ref.read(uuidProvider).v4(),
         description: description,
       ),
     ];

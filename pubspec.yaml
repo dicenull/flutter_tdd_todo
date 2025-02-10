@@ -23,6 +23,7 @@ dev_dependencies:
   riverpod_lint:
   flutter_lints:
   freezed: ^2.5.8
+  mocktail: ^1.0.4
 dependency_overrides:
   flutter_riverpod:
   hooks_riverpod:

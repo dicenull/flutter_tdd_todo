@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:todos/main.dart';
 import 'package:todos/todo.dart';
 import 'package:todos/todo_data.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
   test('同じ引数のToDoクラスは等しい', () {
@@ -14,11 +16,12 @@ void main() {
 
   group(TodoList, () {
     test('Todoを追加できる', () {
-      // ProviderScopeの代わりにProviderContainerを作成
-      final container = ProviderContainer();
-      // TodoListNotifierがdisposeされないように
+      final uuid = MockUuid();
+      final container = ProviderContainer(overrides: [
+        uuidProvider.overrideWithValue(uuid),
+      ]);
+      when(() => uuid.v4()).thenReturn('1');
       final subscription = container.listen(todoListProvider, (_, __) {});
-      // TodoListNotifierを取得
       final todoList = container.read(todoListProvider.notifier);
 
       todoList.add('buy');
@@ -27,3 +30,5 @@ void main() {
     });
   });
 }
+
+class MockUuid extends Mock implements Uuid {}
