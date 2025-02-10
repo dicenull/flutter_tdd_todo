@@ -90,7 +90,11 @@ Exited.
 
 本来のTDDであれば、失敗するテストを書いて、実装し、リファクタリングを行います。
 今回は、すでに実装があるので成功するテストを書いていきます。
-また簡単のため、Todoを追加できるテストだけ実装します。
+
+### Todoを追加するテスト
+
+簡単のため、Todoを追加できるテストだけ実装します。
+では、追加できるテストを追加しましょう。
 
 ```dart
   group(TodoList, () {
@@ -122,11 +126,36 @@ test/todo_test.dart 32:7                            main.<fn>.<fn>
 ```
 
 IDはUUIDパッケージによって生成されます。ここをモックできるよう、ProviderでDIするように変更します。
+
+### UUIDのモック
+
 モックのために、mocktailパッケージを追加します。
 
 ```bash
 flutter pub add mocktail
 ```
+
+`uuidProvider`を追加し、addメソッドではRiverpod経由でUUIDを取得するように変更します。
+
+```dart
+final uuidProvider = Provider((_) => Uuid());
+```
+
+```dart
+void add(String description) {
+    state = [
+      ...state,
+      Todo(
+        // riverpod経由でUUIDを取得
+        id: ref.read(uuidProvider).v4(),
+        description: description,
+      ),
+    ];
+  }
+```
+
+これでUUIDをモックする準備が整いました。
+テストコードを以下のように変更します。
 
 ```dart
 // UUIDのモッククラス
