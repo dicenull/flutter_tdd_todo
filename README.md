@@ -75,7 +75,7 @@ Exited.
 成功しました :tada:
 いよいよProviderを使ったテストを追加しましょう。
 
-## Notifierのテストでモック
+## Expect
 
 それではTodoListNotifierをテストします。
 
@@ -213,3 +213,122 @@ subgraph テスト
   uuidProvider.overrideWithValue --> MockUuid
 end
 ```
+
+### AAAパターン
+
+作成したテストをもう一度見てみましょう。
+3つのパートに分けてテストを記述しています。
+
+```dart
+  group(TodoList, () {
+    test('Todoを追加できる', () {
+      // Arrange
+      final uuid = MockUuid();
+      final container = ProviderContainer(overrides: [
+        uuidProvider.overrideWithValue(uuid),
+      ]);
+      when(() => uuid.v4()).thenReturn('1');
+      final subscription = container.listen(todoListProvider, (_, __) {});
+      final todoList = container.read(todoListProvider.notifier);
+
+      // Act
+      todoList.add('buy');
+
+      // Assert
+      expect(subscription.read().last, Todo(description: 'buy', id: '1'));
+    });
+  });
+```
+
+Arrange-Act-Assertに分けてテストを書くことをAAAパターンと呼びます。
+AAAパターンに従うことで、テストの可読性が向上し、テストの目的が明確になります。
+
+## Verify
+
+`expect`は、テストの結果を直接比較していました。
+テストの結果を間接的に検証する方法として、`verify`があります。
+
+FirebaseEventのようなイベントトラッカーを追加して、テストの追加イベントが発生することを検証してみましょう。
+簡単にするため、ダミーのイベントを発生させるクラスにします。
+
+新しい実装なのでテストファーストで書いてみましょう。
+'Todoを追加する'テストに追記します。
+
+```dart
+      test('Todoを追加できる', () {
+      final uuid = MockUuid();
+      final eventTracker = MockEventTracker(); // 追加
+      final container = ProviderContainer(overrides: [
+        uuidProvider.overrideWithValue(uuid),
+        eventTrackerProvider.overrideWithValue(eventTracker), // 追加
+      ]);
+      when(() => uuid.v4()).thenReturn('1');
+      final subscription = container.listen(todoListProvider, (_, __) {});
+      final todoList = container.read(todoListProvider.notifier);
+
+      todoList.add('buy');
+
+      expect(subscription.read().last, Todo(description: 'buy', id: '1'));
+      verify(() => eventTracker.trackAddTodo('buy')).called(1); // 追加
+    });
+...
+
+class MockEventTracker extends Mock implements EventTracker {} // 追加
+```
+
+もちろんEvenTrackerがないのでコンパイルエラーになります。
+eventTrackerProviderを追加して、EventTrackerを追加します。
+
+```dart
+import 'package:flutter/foundation.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+final eventTrackerProvider = Provider((_) => EventTracker());
+
+class EventTracker {
+  void trackAddTodo(String description) {
+    debugPrint('trackAddTodo: $description');
+  }
+}
+```
+
+テストからインポートを追加します。
+これでコンパイルが通りました。テストを実行してみましょう。
+
+```bash
+No matching calls (actually, no calls at all).
+(If you called `verify(...).called(0);`, please instead use `verifyNever(...);`.)
+package:matcher                            fail
+package:mocktail/src/mocktail.dart 728:7   _VerifyCall._checkWith
+package:mocktail/src/mocktail.dart 519:18  _makeVerify.<fn>
+test/todo_test.dart 33:13                  main.<fn>.<fn>
+```
+
+テストが失敗しました。
+`trackAddTodo`メソッドが呼ばれていないことが検証されています。
+`add`メソッドを読んだら、`trackAddTodo`メソッドが呼ばれるように実装します。
+
+```dart
+  void add(String description) {
+    state = [
+      ...state,
+      Todo(
+        id: ref.read(uuidProvider).v4(),
+        description: description,
+      ),
+    ];
+    ref.read(eventTrackerProvider).trackAddTodo(description); // 追加
+  }
+```
+
+これでテストを実行してみましょう。
+
+```bash
+✓ 同じ引数のToDoクラスは等しい
+✓ TodoList Todoを追加できる
+
+Exited.
+```
+
+成功しました! :tada: :tada: :tada:
+このように、呼ばれていることだけを検証したい場合は`verify`を使います。

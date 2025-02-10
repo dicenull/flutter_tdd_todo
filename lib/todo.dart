@@ -1,4 +1,5 @@
 import 'package:riverpod/riverpod.dart';
+import 'package:todos/event_tracker.dart';
 import 'package:todos/todo_data.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,6 +22,7 @@ class TodoList extends Notifier<List<Todo>> {
         description: description,
       ),
     ];
+    ref.read(eventTrackerProvider).trackAddTodo(description);
   }
 
   void toggle(String id) {
