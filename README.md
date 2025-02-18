@@ -324,6 +324,69 @@ Exited.
 成功しました! :tada: :tada: :tada:
 このように、呼ばれていることだけを検証したい場合は`verify`を使います。
 
+## API通信
+
+TodoListNotifierにAPI通信を追加して、API通信のテストを追加します。
+ここではAPI通信の代わりに、Repository層で抽象化したものを使います。
+
+まず、Repository層を追加します。
+
+```repository.dart
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:todos/todo_data.dart';
+
+final todoRepositoryProvider = Provider((_) => TodoRepository());
+
+class TodoRepository {
+  Future<List<Todo>> fetch() {
+    return Future.value([]);
+  }
+}
+```
+
+初期状態をAPIから取得し、API通信が成功したことを検証するテストを追加します。
+
+```dart
+  group(TodoList, () {
+    // 追加: 新しいテスト
+    test('初期状態をAPIから取得できる', () async {
+      final todoRepository = _MockTodoRepository();
+      final container = ProviderContainer(overrides: [
+        todoRepositoryProvider.overrideWithValue(todoRepository),
+      ]);
+      when(() => todoRepository.fetch()).thenAnswer((_) => Future.value([Todo(id: '1', description: 'shopping')]));
+      final subscription = container.listen(todoListProvider, (_, __) {});
+      final todoList = container.read(todoListProvider.notifier);
+
+      await todoList.fetch();
+
+      expect(subscription.read(), [Todo(id: '1', description: 'shopping')]);
+    });
+  });
+
+class _MockTodoRepository extends Mock implements TodoRepository {}
+```
+
+`fetch`メソッドを追加します。
+
+```dart
+  Future<void> fetch() async {
+    state = await ref.read(todoRepositoryProvider).fetch();
+  }
+```
+
+テストを実行してみましょう。
+
+```bash
+✓ 同じ引数のToDoクラスは等しい
+✓ TodoList 初期状態をAPIから取得できる
+✓ TodoList Todoを追加できる
+
+Exited.
+```
+
+成功しました! :tada: :tada: :tada:
+
 ## まとめ
 
 - AAAパターンを使ってテストを書く

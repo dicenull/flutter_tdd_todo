@@ -1,5 +1,6 @@
 import 'package:riverpod/riverpod.dart';
 import 'package:todos/event_tracker.dart';
+import 'package:todos/repository.dart';
 import 'package:todos/todo_data.dart';
 import 'package:uuid/uuid.dart';
 
@@ -55,5 +56,10 @@ class TodoList extends Notifier<List<Todo>> {
 
   void remove(Todo target) {
     state = state.where((todo) => todo.id != target.id).toList();
+  }
+
+  Future<void> fetch() async {
+    final todoRepository = ref.read(todoRepositoryProvider);
+    state = await todoRepository.fetch();
   }
 }

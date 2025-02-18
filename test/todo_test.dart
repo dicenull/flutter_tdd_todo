@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:todos/event_tracker.dart';
 import 'package:todos/main.dart';
+import 'package:todos/repository.dart';
 import 'package:todos/todo.dart';
 import 'package:todos/todo_data.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +17,21 @@ void main() {
   });
 
   group(TodoList, () {
+    test('初期状態をAPIから取得できる', () async {
+      final todoRepository = _MockTodoRepository();
+      final container = ProviderContainer(overrides: [
+        todoRepositoryProvider.overrideWithValue(todoRepository),
+      ]);
+      when(() => todoRepository.fetch()).thenAnswer(
+          (_) => Future.value([Todo(id: '1', description: 'shopping')]));
+      final subscription = container.listen(todoListProvider, (_, __) {});
+      final todoList = container.read(todoListProvider.notifier);
+
+      await todoList.fetch();
+
+      expect(subscription.read(), [Todo(id: '1', description: 'shopping')]);
+    });
+
     test('Todoを追加できる', () {
       final uuid = _MockUuid();
       final eventTracker = _MockEventTracker();
@@ -38,3 +54,5 @@ void main() {
 class _MockEventTracker extends Mock implements EventTracker {}
 
 class _MockUuid extends Mock implements Uuid {}
+
+class _MockTodoRepository extends Mock implements TodoRepository {}
