@@ -17,8 +17,8 @@ void main() {
 
   group(TodoList, () {
     test('Todoを追加できる', () {
-      final uuid = MockUuid();
-      final eventTracker = MockEventTracker();
+      final uuid = _MockUuid();
+      final eventTracker = _MockEventTracker();
       final container = ProviderContainer(overrides: [
         uuidProvider.overrideWithValue(uuid),
         eventTrackerProvider.overrideWithValue(eventTracker),
@@ -35,6 +35,6 @@ void main() {
   });
 }
 
-class MockEventTracker extends Mock implements EventTracker {}
+class _MockEventTracker extends Mock implements EventTracker {}
 
-class MockUuid extends Mock implements Uuid {}
+class _MockUuid extends Mock implements Uuid {}

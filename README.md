@@ -73,27 +73,15 @@ Exited.
 ```
 
 成功しました :tada:
-いよいよProviderを使ったテストを追加しましょう。
+テストの書き方の基本が分かったところで、Providerを使ったテストを追加しましょう。
 
 ## Expect
 
-それではTodoListNotifierをテストします。
-
-テストの実装はTDD的に進めていきます。
-まずはテストしたいことをテストリストとして列挙しましょう。
-
-- [ ] Todoを追加できる
-- [ ] Todoを削除できる
-- [ ] Todoを完了にできる
-- [ ] Todoを未完了にできる
-- [ ] Todoの説明を編集できる
-
-本来のTDDであれば、失敗するテストを書いて、実装し、リファクタリングを行います。
-今回は、すでに実装があるので成功するテストを書いていきます。
+それでは、すでに実装があるTodoListNotifierをテストします。
+簡単のため、Todoを追加できるテストを1つだけ追加します。
 
 ### Todoを追加するテスト
 
-簡単のため、Todoを追加できるテストだけ実装します。
 では、追加できるテストを追加しましょう。
 
 ```dart
@@ -113,6 +101,9 @@ Exited.
   });
 ```
 
+このテストはRiverpodのテストの書き方を参考にしています。
+<https://riverpod.dev/docs/essentials/testing>
+
 テストを実行してみましょう。
 IDが一致せず失敗してしまいました。
 
@@ -125,7 +116,8 @@ package:flutter_test/src/widget_tester.dart 480:18  expect
 test/todo_test.dart 32:7                            main.<fn>.<fn>
 ```
 
-IDはUUIDパッケージによって生成されます。ここをモックできるよう、ProviderでDIするように変更します。
+実装を見てみると、IDはUUIDパッケージによって生成されています。
+ここをモックできるよう、ProviderでDIするように変更します。
 
 ### UUIDのモック
 
@@ -137,16 +129,16 @@ flutter pub add mocktail
 
 `uuidProvider`を追加し、addメソッドではRiverpod経由でUUIDを取得するように変更します。
 
-```dart
+```todo.dart
 final uuidProvider = Provider((_) => Uuid());
 ```
 
-```dart
+```todo.dart
 void add(String description) {
     state = [
       ...state,
       Todo(
-        // riverpod経由でUUIDを取得
+        // 変更: riverpod経由でUUIDを取得
         id: ref.read(uuidProvider).v4(),
         description: description,
       ),
@@ -159,14 +151,14 @@ void add(String description) {
 
 ```dart
 // UUIDのモッククラス
-class MockUuid extends Mock implements Uuid {}
+class _MockUuid extends Mock implements Uuid {}
 
 void main() {
   ...
   group(TodoList, () {
     test('Todoを追加できる', () {
       // --- 変更 ---
-      final uuid = MockUuid();
+      final uuid = _MockUuid();
       final container = ProviderContainer(overrides: [
         uuidProvider.overrideWithValue(uuid),
       ]);
@@ -179,7 +171,7 @@ void main() {
 }
 ```
 
-これで、テストを実行してみましょう。
+テストを実行してみましょう。
 
 ```bash
 ✓ TodoList Todoを追加できる
@@ -188,28 +180,22 @@ Exited.
 ```
 
 成功しました! :tada: :tada:
-TodoListは以下の図の依存関係になっています。
 
-```mermaid
-graph TD;
-
-  TodoList --> Uuid
-```
-
+ここで、TodoListはUuidに依存しています。
 テストでは、ProviderContainerによってUuidをモックに差し替えています。
 
 ```mermaid
-graph TD;
+flowchart LR;
 
 subgraph アプリ
-  ProviderContainer --> UuidProvider
+  ProviderContainer -.-> UuidProvider
   ProviderContainer --> TodoListProvider
   UuidProvider --> Uuid
   TodoListProvider --> TodoList
 end
 
 subgraph テスト
-  ProviderContainer --> uuidProvider.overrideWithValue
+  ProviderContainer ==> uuidProvider.overrideWithValue
   uuidProvider.overrideWithValue --> MockUuid
 end
 ```
@@ -245,7 +231,8 @@ AAAパターンに従うことで、テストの可読性が向上し、テス�
 
 ## Verify
 
-`expect`は、テストの結果を直接比較していました。
+`expect`は、テストの結果を直接検証していました。
+`expect`で直接検証することが望ましいですが、間接的に検証することが必要なこともあります。
 テストの結果を間接的に検証する方法として、`verify`があります。
 
 FirebaseEventのようなイベントトラッカーを追加して、テストの追加イベントが発生することを検証してみましょう。
@@ -254,10 +241,12 @@ FirebaseEventのようなイベントトラッカーを追加して、テスト�
 新しい実装なのでテストファーストで書いてみましょう。
 'Todoを追加する'テストに追記します。
 
+※この時点では`EvenTracker`がないのでコンパイルエラーになります。
+
 ```dart
-      test('Todoを追加できる', () {
-      final uuid = MockUuid();
-      final eventTracker = MockEventTracker(); // 追加
+    test('Todoを追加できる', () {
+      final uuid = _MockUuid();
+      final eventTracker = _MockEventTracker(); // 追加
       final container = ProviderContainer(overrides: [
         uuidProvider.overrideWithValue(uuid),
         eventTrackerProvider.overrideWithValue(eventTracker), // 追加
@@ -273,10 +262,10 @@ FirebaseEventのようなイベントトラッカーを追加して、テスト�
     });
 ...
 
-class MockEventTracker extends Mock implements EventTracker {} // 追加
+class _MockEventTracker extends Mock implements EventTracker {} // 追加
 ```
 
-もちろんEvenTrackerがないのでコンパイルエラーになります。
+コンパイルエラーを解消しましょう。
 eventTrackerProviderを追加して、EventTrackerを追加します。
 
 ```dart
@@ -305,8 +294,10 @@ test/todo_test.dart 33:13                  main.<fn>.<fn>
 ```
 
 テストが失敗しました。
-`trackAddTodo`メソッドが呼ばれていないことが検証されています。
-`add`メソッドを読んだら、`trackAddTodo`メソッドが呼ばれるように実装します。
+`trackAddTodo`メソッドが呼ばれていないと出力されています。
+`add`メソッドから呼んでいないので当たり前ですね。
+
+`add`メソッドから`trackAddTodo`メソッドを呼ぶよう変更しましょう。
 
 ```dart
   void add(String description) {
